@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import org.bouncycastle.crypto.StreamBlockCipher;
 import org.bouncycastle.crypto.StreamCipher;
 import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.modes.CFBBlockCipher;
-import org.bouncycastle.crypto.modes.OFBBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 
@@ -30,18 +29,16 @@ import shadowsocks.crypto.CryptoException;
 /**
  * AES Crypt implementation
  */
-public class AESCrypto extends BaseCrypto {
+public class AESCrypto extends BaseStreamCrypto {
 
     public final static String CIPHER_AES_128_CFB = "aes-128-cfb";
     public final static String CIPHER_AES_192_CFB = "aes-192-cfb";
     public final static String CIPHER_AES_256_CFB = "aes-256-cfb";
-    public final static String CIPHER_AES_128_OFB = "aes-128-ofb";
-    public final static String CIPHER_AES_192_OFB = "aes-192-ofb";
-    public final static String CIPHER_AES_256_OFB = "aes-256-ofb";
 
     private final static int IV_LENGTH = 16;
 
-    public AESCrypto(String name, String password) throws CryptoException {
+    public AESCrypto(String name, String password) throws CryptoException
+    {
         super(name, password);
     }
 
@@ -52,50 +49,34 @@ public class AESCrypto extends BaseCrypto {
 
     @Override
     public int getKeyLength() {
-        if(mName.equals(CIPHER_AES_128_CFB) || mName.equals(CIPHER_AES_128_OFB)) {
-            return 16;
+        int len = 16;
+        if(mName.equals(CIPHER_AES_128_CFB)) {
+            len = 16;
+        } else if (mName.equals(CIPHER_AES_192_CFB)) {
+            len = 24;
+        } else if (mName.equals(CIPHER_AES_256_CFB)) {
+            len = 32;
         }
-        else if (mName.equals(CIPHER_AES_192_CFB) || mName.equals(CIPHER_AES_192_OFB)) {
-            return 24;
-        }
-        else if (mName.equals(CIPHER_AES_256_CFB) || mName.equals(CIPHER_AES_256_OFB)) {
-            return 32;
-        }
-        return 0;
+        return len;
     }
 
-    protected StreamBlockCipher getCipher(boolean isEncrypted) throws CryptoException
+    protected StreamBlockCipher getCipher(boolean isEncrypted)
     {
         AESEngine engine = new AESEngine();
-        StreamBlockCipher cipher;
+        StreamBlockCipher cipher = null;
 
         if (mName.equals(CIPHER_AES_128_CFB)) {
             cipher = new CFBBlockCipher(engine, getIVLength() * 8);
-        }
-        else if (mName.equals(CIPHER_AES_192_CFB)) {
+        } else if (mName.equals(CIPHER_AES_192_CFB)) {
+            cipher = new CFBBlockCipher(engine, getIVLength() * 8);
+        } else if (mName.equals(CIPHER_AES_256_CFB)) {
             cipher = new CFBBlockCipher(engine, getIVLength() * 8);
         }
-        else if (mName.equals(CIPHER_AES_256_CFB)) {
-            cipher = new CFBBlockCipher(engine, getIVLength() * 8);
-        }
-        else if (mName.equals(CIPHER_AES_128_OFB)) {
-            cipher = new OFBBlockCipher(engine, getIVLength() * 8);
-        }
-        else if (mName.equals(CIPHER_AES_192_OFB)) {
-            cipher = new OFBBlockCipher(engine, getIVLength() * 8);
-        }
-        else if (mName.equals(CIPHER_AES_256_OFB)) {
-            cipher = new OFBBlockCipher(engine, getIVLength() * 8);
-        }
-        else {
-            throw new CryptoException("Invalid AlgorithmParameter: " + mName);
-        }
-
         return cipher;
     }
 
     @Override
-    protected StreamCipher createCipher(byte[] iv, boolean encrypt) throws CryptoException
+    protected StreamCipher createCipher(byte[] iv, boolean encrypt)
     {
         StreamBlockCipher c = getCipher(encrypt);
         ParametersWithIV parameterIV = new ParametersWithIV(new KeyParameter(mKey), iv, 0, mIVLength);

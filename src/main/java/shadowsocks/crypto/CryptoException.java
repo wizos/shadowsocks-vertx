@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  *  limitations under the License.
  */
 package shadowsocks.crypto;
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
 
 public class CryptoException extends Exception
 {

@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,16 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package shadowsocks.auth;
+package shadowsocks.crypto; 
 
-public class AuthException extends Exception
-{
-    private static final long serialVersionUID = 1L;
-
-    public AuthException(String message){
-        super(message);
-    }
-    public AuthException(Exception e){
-        super(e);
-    }
+public class DecryptState {
+    final public static int SUCCESS = 0;
+    final public static int NEED_MORE = 1;
+    final public static int FAILED = 2;
 }

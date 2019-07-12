@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ public class SystemTest{
         GlobalConfig.get().setServer("127.0.0.1");
         GlobalConfig.get().setPort(1024);
         GlobalConfig.get().setLocalPort(2048);
-        GlobalConfig.get().setOTAEnabled(true);
         GlobalConfig.get().setTimeout(100);
     }
     @After
@@ -61,9 +60,7 @@ public class SystemTest{
         log.info("Tear down");
     }
 
-    private void testSimpleHttp(boolean ota) {
-
-        GlobalConfig.get().setOTAEnabled(ota);
+    private void testSimpleHttp() {
 
         ShadowsocksVertx server = new ShadowsocksVertx(true);
         ShadowsocksVertx client = new ShadowsocksVertx(false);
@@ -118,23 +115,15 @@ public class SystemTest{
     public void testHttp() {
         String [] methodList = {
             "aes-128-cfb",
-            "aes-128-ofb",
             "aes-192-cfb",
-            "aes-192-ofb",
             "aes-256-cfb",
-            "aes-256-ofb",
             "chacha20",
             "chacha20-ietf",
         };
         for (String method: methodList) {
             GlobalConfig.get().setMethod(method);
             log.debug("Test method: " + method);
-            testSimpleHttp(true);
+            testSimpleHttp();
         }
-    }
-
-    @Test
-    public void testHttpWithoutOTA() {
-        testSimpleHttp(false);
     }
 }

@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package shadowsocks.vertxio;
 
-import java.net.InetSocketAddress;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -27,17 +26,13 @@ import io.vertx.core.Vertx;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetSocket;
-import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
 
 import shadowsocks.util.LocalConfig;
 import shadowsocks.crypto.SSCrypto;
 import shadowsocks.crypto.CryptoFactory;
-import shadowsocks.crypto.CryptoException;
-import shadowsocks.auth.SSAuth;
-import shadowsocks.auth.HmacSHA1;
-import shadowsocks.auth.AuthException;
+import shadowsocks.crypto.DecryptState;
 
 public class ServerHandler implements Handler<Buffer> {
 
@@ -45,27 +40,24 @@ public class ServerHandler implements Handler<Buffer> {
 
     private final static int ADDR_TYPE_IPV4 = 1;
     private final static int ADDR_TYPE_HOST = 3;
-
-    private final static int OTA_FLAG = 0x10;
+    private final static int ADDR_TYPE_IPV6 = 4; //Not support yet
 
     private Vertx mVertx;
     private NetSocket mClientSocket;
     private NetSocket mTargetSocket;
-    private LocalConfig mConfig;
     private int mCurrentStage;
-    private Buffer mBufferQueue;
-    private int mChunkCount;
+    private Buffer mPlainTextBufferQ;
+    private Buffer mEncryptTextBufferQ;
     private SSCrypto mCrypto;
-    private SSAuth mAuthor;
 
     private class Stage {
-        final public static int ADDRESS = 1;
-        final public static int DATA = 2;
+        final public static int HANDSHAKER = 1;
+        final public static int STREAMIMG = 2;
         final public static int DESTORY = 100;
     }
 
     private void nextStage() {
-        if (mCurrentStage != Stage.DATA){
+        if (mCurrentStage != Stage.STREAMIMG){
             mCurrentStage++;
         }
     }
@@ -79,7 +71,7 @@ public class ServerHandler implements Handler<Buffer> {
             destory();
         });
         socket.exceptionHandler(e -> {
-            log.error("Catch Exception.", e);
+            log.error("Catch Exception." + e.toString());
             destory();
         });
     }
@@ -87,92 +79,72 @@ public class ServerHandler implements Handler<Buffer> {
     public ServerHandler(Vertx vertx, NetSocket socket, LocalConfig config) {
         mVertx = vertx;
         mClientSocket = socket;
-        mConfig = config;
-        mCurrentStage = Stage.ADDRESS;
-        mBufferQueue = Buffer.buffer();
-        mChunkCount = 0;
+        mCurrentStage = Stage.HANDSHAKER;
+        mPlainTextBufferQ = Buffer.buffer();
+        mEncryptTextBufferQ = Buffer.buffer();
         setFinishHandler(mClientSocket);
-        try{
-            mCrypto = CryptoFactory.create(mConfig.method, mConfig.password);
-        }catch(Exception e){
-            //Will never happen, we check this before.
-        }
-        mAuthor = new HmacSHA1();
+        mCrypto = CryptoFactory.create(config.method, config.password);
     }
 
-    private Buffer compactBuffer(int start) {
-        mBufferQueue = Buffer.buffer().appendBuffer(mBufferQueue.slice(start, mBufferQueue.length()));
-        return mBufferQueue;
+    private Buffer compactPlainTextBufferQ(int start) {
+        mPlainTextBufferQ = Buffer.buffer().appendBuffer(mPlainTextBufferQ.slice(start, mPlainTextBufferQ.length()));
+        return mPlainTextBufferQ;
     }
 
-    private Buffer cleanBuffer() {
-        mBufferQueue = Buffer.buffer();
-        return mBufferQueue;
+    private Buffer cleanPlainTextBufferQ() {
+        mPlainTextBufferQ = Buffer.buffer();
+        return mPlainTextBufferQ;
     }
 
-    private boolean handleStageAddress() {
+    private Buffer cleanEncryptTextBufferQ() {
+        mEncryptTextBufferQ = Buffer.buffer();
+        return mEncryptTextBufferQ;
+    }
 
-        int bufferLength = mBufferQueue.length();
+    private boolean handleStageHandshaker() {
+
+        int bufferLength = mPlainTextBufferQ.length();
         String addr = null;
-        int authLen = 0;
         int current = 0;
 
-        int addrType = mBufferQueue.getByte(0);
-
-        if (mConfig.oneTimeAuth) {
-            authLen = HmacSHA1.AUTH_LEN;
-            if ((addrType & OTA_FLAG) != OTA_FLAG) {
-                log.error("OTA is not enabled.");
-                return true;
-            }
-            addrType &= 0x0f;
-        }
+        int addrType = mPlainTextBufferQ.getByte(0);
 
         if (addrType == ADDR_TYPE_IPV4) {
             // addrType(1) + ipv4(4) + port(2)
-            if (bufferLength < 7 + authLen)
+            if (bufferLength < 7)
                 return false;
             try{
                 //remote the "/"
-                addr = InetAddress.getByAddress(mBufferQueue.getBytes(1, 5)).toString().substring(1);
+                addr = InetAddress.getByAddress(mPlainTextBufferQ.getBytes(1, 5)).toString().substring(1);
             }catch(UnknownHostException e){
-                log.error("UnknownHostException.", e);
+                log.error("UnknownHostException." + e.toString());
                 return true;
             }
             current = 5;
         }else if (addrType == ADDR_TYPE_HOST) {
-            short hostLength = mBufferQueue.getUnsignedByte(1);
+            short hostLength = mPlainTextBufferQ.getUnsignedByte(1);
             // addrType(1) + len(1) + host + port(2)
-            if (bufferLength < hostLength + 4 + authLen)
+            if (bufferLength < hostLength + 4)
                 return false;
-            addr = mBufferQueue.getString(2, hostLength + 2);
+            addr = mPlainTextBufferQ.getString(2, hostLength + 2);
             current = hostLength + 2;
         }else {
             log.warn("Unsupport addr type " + addrType);
             return true;
         }
-        int port = mBufferQueue.getUnsignedShort(current);
+        int port = mPlainTextBufferQ.getUnsignedShort(current);
         current = current + 2;
-        if (mConfig.oneTimeAuth) {
-            byte [] expectResult = mBufferQueue.getBytes(current, current + authLen);
-            byte [] authKey = SSAuth.prepareKey(mCrypto.getIV(false), mCrypto.getKey());
-            byte [] authData = mBufferQueue.getBytes(0, current);
-            try{
-                if (!mAuthor.doAuth(authKey, authData, expectResult)) {
-                    log.error("Auth header failed.");
-                    return true;
-                }
-            }catch(AuthException e) {
-                log.error("Auth header exception.", e);
-                return true;
-            }
-            current = current + authLen;
-        }
-        compactBuffer(current);
+        compactPlainTextBufferQ(current);
         log.info("Connecting to " + addr + ":" + port);
         connectToRemote(addr, port);
         nextStage();
         return false;
+    }
+
+    private void sendToClient(Buffer buffer) {
+        byte [] data = buffer.getBytes();
+        byte [] encryptData = mCrypto.encrypt(data);
+        mClientSocket.write(Buffer.buffer(encryptData));
     }
 
     private void connectToRemote(String addr, int port) {
@@ -188,18 +160,20 @@ public class ServerHandler implements Handler<Buffer> {
             mTargetSocket = res.result();
             setFinishHandler(mTargetSocket);
             mTargetSocket.handler(buffer -> { // remote socket data handler
-                try {
-                    byte [] data = buffer.getBytes();
-                    byte [] encryptData = mCrypto.encrypt(data, data.length);
-                    flowControl(mClientSocket, mTargetSocket);
-                    mClientSocket.write(Buffer.buffer(encryptData));
-                }catch(CryptoException e){
-                    log.error("Catch exception", e);
-                    destory();
+                // Chunk max length = 0x3fff.
+                int chunkMaxLen = 0x3fff;
+
+                flowControl(mClientSocket, mTargetSocket);
+
+                while (buffer.length() > 0) {
+                    int bufferLength = buffer.length();
+                    int end = bufferLength > chunkMaxLen ? chunkMaxLen : bufferLength;
+                    sendToClient(buffer.slice(0, end));
+                    buffer = buffer.slice(end, buffer.length());
                 }
             });
-            if (mBufferQueue.length() > 0) {
-                handleStageData();
+            if (mPlainTextBufferQ.length() > 0) {
+                handleStageStreaming();
             }
         });
     }
@@ -218,53 +192,21 @@ public class ServerHandler implements Handler<Buffer> {
         mTargetSocket.write(buffer);
     }
 
-    private boolean handleStageData() {
+    private boolean handleStageStreaming() {
         if (mTargetSocket == null) {
             //remote is not ready, just hold the buffer.
             return false;
         }
-        if (mConfig.oneTimeAuth) {
-            // chunk len (2) + auth len
-            int chunkHeaderLen = 2 + HmacSHA1.AUTH_LEN;
-            int bufferLength = mBufferQueue.length();
-            if (bufferLength < chunkHeaderLen){
-                return false;
-            }
-            int chunkLen = mBufferQueue.getUnsignedShort(0);
-            if (bufferLength < chunkLen + chunkHeaderLen) {
-                return false;
-            }
-            //handle this case, chunk len = 0
-            if (chunkLen > 0) {
-                byte [] expectResult = mBufferQueue.getBytes(2, chunkHeaderLen);
-                byte [] authKey = SSAuth.prepareKey(mCrypto.getIV(false), mChunkCount);
-                byte [] authData = mBufferQueue.getBytes(chunkHeaderLen, chunkHeaderLen + chunkLen);
-                try{
-                    if (!mAuthor.doAuth(authKey, authData, expectResult)){
-                        log.error("Auth chunk " + mChunkCount + " failed.");
-                        return true;
-                    }
-                }catch(AuthException e){
-                    log.error("Auth chunk " + mChunkCount + " exception.", e);
-                    return true;
-                }
-                sendToRemote(mBufferQueue.slice(chunkHeaderLen, chunkHeaderLen + chunkLen));
-            }
-            mChunkCount++;
-            compactBuffer(chunkHeaderLen + chunkLen);
-            if (mBufferQueue.length() > 0) {
-                return handleStageData();
-            }
-        }else{
-            sendToRemote(mBufferQueue);
-            cleanBuffer();
-        }
+        sendToRemote(mPlainTextBufferQ);
+        cleanPlainTextBufferQ();
         return false;
     }
 
     private synchronized void destory() {
         if (mCurrentStage != Stage.DESTORY) {
             mCurrentStage = Stage.DESTORY;
+        } else {
+            return;
         }
         if (mClientSocket != null)
             mClientSocket.close();
@@ -275,21 +217,27 @@ public class ServerHandler implements Handler<Buffer> {
     @Override
     public void handle(Buffer buffer) {
         boolean finish = false;
-        try{
-            byte [] data = buffer.getBytes();
-            byte [] decryptData = mCrypto.decrypt(data, data.length);
-            mBufferQueue.appendBytes(decryptData);
-        }catch(CryptoException e){
-            log.error("Catch exception", e);
+        byte [] data = mEncryptTextBufferQ.appendBuffer(buffer).getBytes();
+        byte [][] decryptResult = mCrypto.decrypt(data);
+        int lastState = mCrypto.getLastDecryptState();
+        if (lastState == DecryptState.FAILED) {
             destory();
+        } else if (lastState == DecryptState.NEED_MORE) {
             return;
         }
+        byte [] decryptData = decryptResult[0];
+        byte [] encryptDataLeft = decryptResult[1];
+        cleanEncryptTextBufferQ();
+        if (encryptDataLeft != null) {
+            mEncryptTextBufferQ.appendBytes(encryptDataLeft);
+        }
+        mPlainTextBufferQ.appendBytes(decryptData);
         switch (mCurrentStage) {
-            case Stage.ADDRESS:
-                finish = handleStageAddress();
+            case Stage.HANDSHAKER:
+                finish = handleStageHandshaker();
                 break;
-            case Stage.DATA:
-                finish = handleStageData();
+            case Stage.STREAMIMG:
+                finish = handleStageStreaming();
                 break;
             default:
         }

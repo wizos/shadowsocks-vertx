@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package shadowsocks;
 import io.vertx.core.Vertx;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.NetServer;
 
 import shadowsocks.util.GlobalConfig;

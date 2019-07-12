@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,19 +18,16 @@ package shadowsocks.crypto;
 import org.bouncycastle.crypto.StreamCipher;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 import shadowsocks.crypto.CryptoException;
 import shadowsocks.crypto.Utils;
+import shadowsocks.crypto.DecryptState;
 
 /**
  * Crypt base class implementation
  */
-public abstract class BaseCrypto implements SSCrypto
+public abstract class BaseStreamCrypto implements SSCrypto
 {
-
-    protected abstract StreamCipher createCipher(byte[] iv, boolean encrypt) throws CryptoException;
-    protected abstract void process(byte[] in, ByteArrayOutputStream out, boolean encrypt);
 
     protected final String mName;
     protected final byte[] mKey;
@@ -48,14 +45,14 @@ public abstract class BaseCrypto implements SSCrypto
 
     private byte [] mLock = new byte[0];
 
-    public BaseCrypto(String name, String password) throws CryptoException
+    protected abstract StreamCipher createCipher(byte[] iv, boolean encrypt);
+    protected abstract void process(byte[] in, ByteArrayOutputStream out, boolean encrypt);
+
+    public BaseStreamCrypto(String name, String password) throws CryptoException
     {
         mName = name.toLowerCase();
         mIVLength = getIVLength();
         mKeyLength = getKeyLength();
-        if (mKeyLength == 0) {
-            throw new CryptoException("Unsupport method: " + mName);
-        }
         mKey = Utils.getKey(password, mKeyLength, mIVLength);
         mData = new ByteArrayOutputStream();
     }
@@ -74,37 +71,27 @@ public abstract class BaseCrypto implements SSCrypto
             return mDecryptIV;
     }
 
-    private byte [] encryptLocked(byte[] in) throws CryptoException
+    private byte [] encryptLocked(byte[] in)
     {
         mData.reset();
         if (mEncryptCipher == null) {
             mEncryptIV = getIV(true);
             mEncryptCipher = createCipher(mEncryptIV, true);
-            try {
-                mData.write(mEncryptIV);
-            } catch (IOException e) {
-                throw new CryptoException(e);
-            }
+            mData.write(mEncryptIV, 0, getIVLength());
         }
         process(in, mData, true);
         return mData.toByteArray();
     }
 
     @Override
-    public byte [] encrypt(byte[] in, int length) throws CryptoException
+    public byte [] encrypt(byte[] in)
     {
         synchronized(mLock) {
-            if (length != in.length){
-                byte[] data = new byte[length];
-                System.arraycopy(in, 0, data, 0, length);
-                return encryptLocked(data);
-            }else{
-                return encryptLocked(in);
-            }
+            return encryptLocked(in);
         }
     }
 
-    private byte[] decryptLocked(byte[] in) throws CryptoException
+    private byte[] decryptLocked(byte[] in)
     {
         byte[] data;
         mData.reset();
@@ -122,16 +109,18 @@ public abstract class BaseCrypto implements SSCrypto
     }
 
     @Override
-    public byte [] decrypt(byte[] in, int length) throws CryptoException
+    public byte [][] decrypt(byte[] in)
     {
+        byte result[][] = new byte[2][];
+        result[1] = null;
         synchronized(mLock) {
-            if (length != in.length) {
-                byte[] data = new byte[length];
-                System.arraycopy(in, 0, data, 0, length);
-                return decryptLocked(data);
-            }else{
-                return decryptLocked(in);
-            }
+            result[0] = decryptLocked(in);
         }
+        return result;
+    }
+
+    public int getLastDecryptState()
+    {
+        return DecryptState.SUCCESS;
     }
 }

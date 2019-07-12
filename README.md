@@ -1,13 +1,14 @@
 shadowsocks-vertx
 ================
 
-Based on SS_V1, but we have to change the protocol now.
+Only support SS-V1
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/c374229026604afe9383ab11e2f46d04)](https://app.codacy.com/app/Bestoa/shadowsocks-vertx?utm_source=github.com&utm_medium=referral&utm_content=Bestoa/shadowsocks-vertx&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.org/Bestoa/shadowsocks-vertx.svg?branch=master)](https://travis-ci.org/Bestoa/shadowsocks-vertx)
 [![codecov](https://codecov.io/gh/Bestoa/shadowsocks-vertx/branch/master/graph/badge.svg)](https://codecov.io/gh/Bestoa/shadowsocks-vertx)
 [![License](http://img.shields.io/:license-apache-blue.svg?style=flat-square)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
-#Intro
+## Intro
 
 shadowsocks-vertx is a lightweight tunnel proxy which can help you get through firewalls. It is a java port of shadowsocks. This project is based on vert.x.
 
@@ -15,15 +16,15 @@ The protocol is compatible with the origin shadowsocks (if both have been upgrad
 
 JDK 8 is needed.
 
-Current version 0.8.3
+Current version 0.8.4
 
 It is **unstable**! If you encounter any problems, please open an issue.
 
-About shadowsocks, please refer to https://shadowsocks.org/
+About shadowsocks, please refer to [shadowsocks](https://shadowsocks.org/)
 
-About vert.x, please refer to http://vertx.io/
+About vert.x, please refer to [vertx](http://vertx.io/)
 
-#Features
+## Features
 
 Supported argument:
 
@@ -40,14 +41,14 @@ Supported argument:
 
 Supported encrypt method:
 
-    1. aes-128-cfb/ofb
-    2. aes-192-cfb/ofb
-    3. aes-256-cfb/ofb
+    1. aes-128-cfb
+    2. aes-192-cfb
+    3. aes-256-cfb
     4. chacha20/chacha20-ietf
 
 Supported one-time auth.
 
-Support JSON config file. Please refer to https://github.com/shadowsocks/shadowsocks/wiki/Configuration-via-Config-File.
+Support JSON config file. Please refer to [shadowsocks config](https://github.com/shadowsocks/shadowsocks/wiki/Configuration-via-Config-File).
 Note:
 
     1. Not support: local_address, client will bind 0.0.0.0 not 127.0.0.1
@@ -57,25 +58,25 @@ Note:
 
 You could refer to demo config etc/demo.json.
 
-How to run:
-===========
-### (1) Before you start
+### How to run
+
+#### (1) Before you start
 You must have 'gradle' installed first, or use gradle wrapper ./gradlew.
 
-### (2) generate distributable zip
-```
+#### (2) generate distributable zip
+```shell
 $ gradle distZip
 ```
 or
-```
+```shell
 $ ./gradlew distZip
 ```
 
-Then you will get **shadowsocks-ver.zip** in build/distributions.
+Then you will get shadowsocks-ver.zip in build/distributions.
 Unzip it, the folder should contain bin and lib.
 
-#### How to run
-```
+#### Run
+```shell
 //Server
 $ bin/shadowsocks -S ...
 $ bin/shadowsocks --server_mode ...
@@ -84,19 +85,19 @@ $ bin/shadowsocks ...
 ```
 
 ### (3) generate all-in-one jar
-```
+```shell
 $ gradle fatJar
 ```
 or
-```
+```shell
 $ ./gradlew fatJar
 ```
 
 
-Then you will get **shadowsocks-fat-ver.jar** in build/libs.
+Then you will get shadowsocks-fat-ver.jar in build/libs.
 
 #### How to run
-```
+```shell
 //Server
 $ java -jar shadowsocks-fat-xx.jar -S ...
 $ java -jar shadowsocks-fat-xx.jar --server_mode ...

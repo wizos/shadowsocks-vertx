@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -23,20 +23,18 @@ public class LocalConfig{
     public String server;
     public int serverPort;
     public int localPort;
-    public boolean oneTimeAuth;
     public int timeout;
     //For server is target, for local is server.
     public InetSocketAddress remoteAddress;
 
     public String target;
 
-    public LocalConfig(String k, String m, String s, int p, int lp, boolean ota, int t){
+    public LocalConfig(String k, String m, String s, int p, int lp, int t){
         password = k;
         method = m;
         server = s;
         serverPort = p;
         localPort = lp;
-        oneTimeAuth = ota;
         timeout = t;
     }
 }

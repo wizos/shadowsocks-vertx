@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package shadowsocks.crypto;
 
-import javax.crypto.SecretKey;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.MessageDigest;
@@ -99,7 +98,6 @@ public class Utils{
         MessageDigest md = null;
         byte[] passwordBytes = null;
         byte[][] keyAndIV = null;
-        int i = 0;
 
         try{
             md = MessageDigest.getInstance("MD5");

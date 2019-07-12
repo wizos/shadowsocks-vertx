@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import shadowsocks.crypto.CryptoException;
 /**
  * Chacha20 Crypt implementation
  */
-public class Chacha20Crypto extends BaseCrypto {
+public class Chacha20Crypto extends BaseStreamCrypto {
 
     private final static String CIPHER_CHACHA20 = "chacha20";
     private final static String CIPHER_CHACHA20_IETF = "chacha20-ietf";
@@ -53,14 +53,11 @@ public class Chacha20Crypto extends BaseCrypto {
 
     @Override
     public int getKeyLength() {
-        if (mName.equals(CIPHER_CHACHA20) || mName.equals(CIPHER_CHACHA20_IETF)) {
-            return KEY_LENGTH;
-        }
-        return 0;
+        return KEY_LENGTH;
     }
 
     @Override
-    protected StreamCipher createCipher(byte[] iv, boolean encrypt) throws CryptoException
+    protected StreamCipher createCipher(byte[] iv, boolean encrypt)
     {
         StreamCipher c;
         if (mName.equals(CIPHER_CHACHA20_IETF)) {

@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -47,7 +47,6 @@ public class GlobalConfig{
     private AtomicInteger mPort;
     private AtomicInteger mLocalPort;
     private AtomicInteger mTimeout; /* UNIT second */
-    private AtomicBoolean mOneTimeAuth;
     private AtomicBoolean mIsServerMode;
 
     final private static String DEFAULT_METHOD = "aes-256-cfb";
@@ -57,16 +56,15 @@ public class GlobalConfig{
     final private static int DEFAULT_LOCAL_PORT = 9999;
     final private static int DEFAULT_TIMEOUT = 300;
 
-    final static String SERVER_MODE = "server_mode";
-    final static String SERVER_ADDR = "server";
-    final static String LOCAL_PORT = "local_port";
-    final static String SERVER_PORT = "server_port";
-    final static String METHOD = "method";
-    final static String PASSWORD = "password";
-    final static String AUTH = "auth";
-    final static String TIMEOUT = "timeout";
-    final static String HELP = "help";
-    final static String CONFIG = "config";
+    final private static String SERVER_MODE = "server_mode";
+    final private static String SERVER_ADDR = "server";
+    final private static String LOCAL_PORT = "local_port";
+    final private static String SERVER_PORT = "server_port";
+    final private static String METHOD = "method";
+    final private static String PASSWORD = "password";
+    final private static String TIMEOUT = "timeout";
+    final private static String HELP = "help";
+    final private static String CONFIG = "config";
 
     //Lock
     public void getLock() {
@@ -124,15 +122,6 @@ public class GlobalConfig{
         return mLocalPort.get();
     }
 
-    //One time auth
-    public void setOTAEnabled(boolean enable){
-        mOneTimeAuth.set(enable);
-    }
-    public boolean isOTAEnabled()
-    {
-        return mOneTimeAuth.get();
-    }
-
     //Running in server/local mode
     private void setServerMode(boolean isServer){
         mIsServerMode.set(isServer);
@@ -165,7 +154,6 @@ public class GlobalConfig{
         mServer = new AtomicReference<String>(DEFAULT_SERVER);
         mPort = new AtomicInteger(DEFAULT_PORT);
         mLocalPort = new AtomicInteger(DEFAULT_LOCAL_PORT);
-        mOneTimeAuth = new AtomicBoolean(false);
         mIsServerMode = new AtomicBoolean(false);
         mConfigFile = new AtomicReference<String>();
         mTimeout = new AtomicInteger(DEFAULT_TIMEOUT);
@@ -176,7 +164,6 @@ public class GlobalConfig{
         log.info("Mode [" + (isServerMode()?"Server":"Local") + "]");
         log.info("Crypto method [" + getMethod() + "]");
         log.info("Password [" + getPassword() + "]");
-        log.info("Auth [" + isOTAEnabled() + "]");
         if (isServerMode()) {
             log.info("Bind port [" + getPort() + "]");
         }else{
@@ -196,7 +183,7 @@ public class GlobalConfig{
                 return null;
             return new String(data);
         }catch(IOException e){
-            log.error("Read config file " + name + " error.", e);
+            log.error("Read config file " + name + " error:" + e.toString());
             return null;
         }
     }
@@ -234,11 +221,6 @@ public class GlobalConfig{
             log.debug("CFG:Crypto method: " + method);
             GlobalConfig.get().setMethod(method);
         }
-        if (jsonobj.containsKey(AUTH)) {
-            boolean auth = jsonobj.getBoolean(AUTH).booleanValue();
-            log.debug("CFG:One time auth: " + auth);
-            GlobalConfig.get().setOTAEnabled(auth);
-        }
         if (jsonobj.containsKey(TIMEOUT)) {
             int timeout = jsonobj.getInteger(TIMEOUT).intValue();
             log.debug("CFG:Timeout: " + timeout);
@@ -256,19 +238,18 @@ public class GlobalConfig{
         int c;
         String arg;
 
-        LongOpt [] longopts = new LongOpt[10];
+        LongOpt [] longopts = new LongOpt[9];
         longopts[0] = new LongOpt(SERVER_MODE, LongOpt.NO_ARGUMENT, null, 'S');
         longopts[1] = new LongOpt(METHOD, LongOpt.REQUIRED_ARGUMENT, null, 'm');
         longopts[2] = new LongOpt(PASSWORD, LongOpt.REQUIRED_ARGUMENT, null, 'k');
         longopts[3] = new LongOpt(SERVER_PORT, LongOpt.REQUIRED_ARGUMENT, null, 'p');
-        longopts[4] = new LongOpt(AUTH, LongOpt.NO_ARGUMENT, null, 'a');
-        longopts[5] = new LongOpt(SERVER_ADDR, LongOpt.REQUIRED_ARGUMENT, null, 's');
-        longopts[6] = new LongOpt(LOCAL_PORT, LongOpt.REQUIRED_ARGUMENT, null, 'l');
-        longopts[7] = new LongOpt(CONFIG, LongOpt.REQUIRED_ARGUMENT, null, 'c');
-        longopts[8] = new LongOpt(TIMEOUT, LongOpt.REQUIRED_ARGUMENT, null, 't');
-        longopts[9] = new LongOpt(HELP, LongOpt.NO_ARGUMENT, null, 'h');
+        longopts[4] = new LongOpt(SERVER_ADDR, LongOpt.REQUIRED_ARGUMENT, null, 's');
+        longopts[5] = new LongOpt(LOCAL_PORT, LongOpt.REQUIRED_ARGUMENT, null, 'l');
+        longopts[6] = new LongOpt(CONFIG, LongOpt.REQUIRED_ARGUMENT, null, 'c');
+        longopts[7] = new LongOpt(TIMEOUT, LongOpt.REQUIRED_ARGUMENT, null, 't');
+        longopts[8] = new LongOpt(HELP, LongOpt.NO_ARGUMENT, null, 'h');
 
-        Getopt g = new Getopt("shadowsocks", argv, "Sm:k:p:as:l:c:t:h", longopts);
+        Getopt g = new Getopt("shadowsocks", argv, "Sm:k:p:s:l:c:t:h", longopts);
 
         while ((c = g.getopt()) != -1)
         {
@@ -289,10 +270,6 @@ public class GlobalConfig{
                     int port = Integer.parseInt(arg);
                     log.debug("CMD:Server port: " + port);
                     GlobalConfig.get().setPort(port);
-                    break;
-                case 'a':
-                    log.debug("CMD:OTA enforcing mode.");
-                    GlobalConfig.get().setOTAEnabled(true);
                     break;
                 case 'S':
                     log.debug("CMD:Server mode.");
@@ -338,7 +315,6 @@ public class GlobalConfig{
                 GlobalConfig.get().getServer(),
                 GlobalConfig.get().getPort(),
                 GlobalConfig.get().getLocalPort(),
-                GlobalConfig.get().isOTAEnabled(),
                 GlobalConfig.get().getTimeout()
                 );
         GlobalConfig.get().releaseLock();
@@ -351,7 +327,6 @@ public class GlobalConfig{
                 "   -m crypto method\n" +
                 "   -k password\n" +
                 "   -p bind port(server)/remote port(client)\n" +
-                "   -a OTA enforcing mode\n" +
                 "   -l local port\n" +
                 "   -s server\n" +
                 "   -S server mode\n" +

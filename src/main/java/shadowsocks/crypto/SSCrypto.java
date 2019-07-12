@@ -1,5 +1,5 @@
 /*   
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,19 +15,15 @@
  */
 package shadowsocks.crypto; 
 
-import java.io.ByteArrayOutputStream;
-import java.util.Map;
-
-import shadowsocks.crypto.CryptoException;
-
 /**
  * Interface of crypt
  */
 public interface SSCrypto {
-    byte [] encrypt(byte[] data, int length) throws CryptoException;
-    byte [] decrypt(byte[] data, int length) throws CryptoException;
+    byte [] encrypt(byte[] data);
+    byte [][] decrypt(byte[] data);
     int getIVLength();
     int getKeyLength();
     byte [] getIV(boolean encrypt);
     byte [] getKey();
+    int getLastDecryptState();
 }

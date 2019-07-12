@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016 Author:NU11 bestoapache@gmail.com
+ *   Copyright 2016 Author:Bestoa bestoapache@gmail.com
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -41,14 +41,11 @@ public class Main{
             return;
         }
         //make sure this method could work.
-        try{
-            CryptoFactory.create(GlobalConfig.get().getMethod(), GlobalConfig.get().getPassword());
-        }catch(Exception e){
-            log.fatal("Error crypto method", e);
+        if (CryptoFactory.create(GlobalConfig.get().getMethod(), GlobalConfig.get().getPassword()) == null) {
+            log.fatal("Unsupport crypto method: " + GlobalConfig.get().getMethod());
             return;
         }
         GlobalConfig.get().printConfig();
         new ShadowsocksVertx(GlobalConfig.get().isServerMode()).start();
-        //new Shadowsocks(GlobalConfig.get().isServerMode()).boot();
     }
 }
